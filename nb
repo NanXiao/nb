@@ -1,0 +1,60 @@
+#!/bin/sh
+
+loop_count=10
+tmp_file=`mktemp`
+
+usage()
+{
+	echo "Usage: ./nb [-c count] program arg1 ..."
+	exit 1
+}
+
+while getopts ":c:f:" c; do
+	case "${c}" in
+		c) loop_count=${OPTARG} ;;
+		*) usage ;;
+	esac
+done
+
+shift "$((OPTIND-1))"
+
+if [[ $# == 0 ]]
+then
+	usage
+fi
+
+str_array=("real" "user" "sys")
+time_array=(0.00 0.00 0.00)
+
+for ((i = 0; i <= ${loop_count}; i++))
+do
+	/usr/bin/time -p "$@" 2>${tmp_file}
+
+	if [[ ${i} == 0 ]]
+	then
+		# Discard first running result
+		continue
+	fi
+
+	for ((j = 0; j < ${#str_array[@]}; j++))
+	do
+		time_row=`grep ${str_array[j]} ${tmp_file}`
+		if [[ `echo ${time_row} | wc -l | awk '{print $1}'` != 1 ]]
+		then
+			echo "Wrong in generating " ${tmp_file}
+			exit 2
+		else
+			time_array[j]=`echo ${time_row} | awk -v sum_time="${time_array[j]}" '{print (sum_time + $2)}'`
+		fi
+	done
+done
+
+echo "Average running time of" ${loop_count} "times:"
+
+for ((i = 0; i < ${#str_array[@]}; i++))
+do
+	time_array[i]=`awk -v sum_time="${time_array[i]}" -v loop_count="$loop_count" 'BEGIN {print (sum_time / loop_count)}'`
+	echo "${str_array[i]}:" "${time_array[i]}" "seconds"
+done
+
+rm ${tmp_file}
