@@ -2,6 +2,7 @@
 
 loop_count=10
 tmp_file=`mktemp`
+trap 'rm -f ${tmp_file}; exit 3' SIGHUP SIGINT SIGTERM
 
 usage()
 {
@@ -57,4 +58,4 @@ do
 	echo "${str_array[i]}:" "${time_array[i]}" "seconds"
 done
 
-rm ${tmp_file}
+rm -f ${tmp_file}
